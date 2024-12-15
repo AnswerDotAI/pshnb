@@ -8,15 +8,30 @@ __all__ = ['BashMagic', 'create_magic', 'load_ipython_extension', 'create_ipytho
 # %% ../00_core.ipynb
 import re,os
 from pathlib import Path
+import pexpect
 from IPython.core.magic import register_cell_magic
 from IPython.display import display, Javascript
 from IPython.paths import get_ipython_dir
+from IPython.core.getipython import get_ipython
+from .ai_integration import BashAiMagic
 
 # %% ../00_core.ipynb
 class BashMagic:
     def __init__(self):
-        self.o = ...
+        self.o = pexpect.spawn('bash', encoding='utf-8')
+        self.o.expect_exact('$')
         self._loaded = False
+
+    def cleanup(self):
+        if hasattr(self, 'o') and self.o:
+            self.o.close()
+
+    def __del__(self):
+        self.cleanup()
+
+    def reset(self):
+        self.cleanup()
+        self.__init__()
 
     def bash(self, line, cell=None):
         if line and not cell: cell=line
@@ -25,14 +40,20 @@ class BashMagic:
             self._loaded = True
         disp = True
         if cell.endswith(';'): disp,cell = False,cell[:-1]
-        res = self.o.eval(cell) or None
-        if disp: return res
+        try:
+            self.o.sendline(cell)
+            self.o.expect_exact('$')
+            output = self.o.before.strip()
+            return output if disp else None
+        except Exception as e:
+            return f"Error: {str(e)}"
 
 # %% ../00_core.ipynb
-def create_magic(shell=None):
+def create_magic(shell=None, model=None):
     if not shell: shell = get_ipython()
-    bash_magic = BashMagic()
-    shell.register_magic_function(bash_magic, 'line_cell', 'psh')
+    bash_magic = BashAiMagic(model=model)
+    shell.register_magic_function(bash_magic.bash, 'line_cell', 'psh')
+    shell.register_magic_function(bash_magic.bash_with_ai, 'line_cell', 'psha')
 
 # %% ../00_core.ipynb
 def load_ipython_extension(ipython):
