@@ -39,7 +39,7 @@ for ext in ['png', 'svg']:
     long_description = re.sub(r'src=\"(.*)\.'+ext+'\"', 'src=\"' + raw.format(cfg['user'],cfg['lib_name'])+'/'+cfg['branch']+'/\\1.'+ext+'\"', long_description)
 
 setuptools.setup(
-    name = 'aplnb',
+    name = 'bashnb',
     license = lic[0],
     classifiers = [
         'Development Status :: ' + statuses[int(cfg['status'])],
@@ -50,7 +50,6 @@ setuptools.setup(
     url = cfg['git_url'],
     packages = setuptools.find_packages(),
     include_package_data = True,
-    package_data={'aplnb': ['lb.js']},
     install_requires = requirements,
     extras_require={ 'dev': dev_requirements },
     python_requires  = '>=' + cfg['min_python'],
@@ -60,7 +59,7 @@ setuptools.setup(
     entry_points = {
         'console_scripts': cfg.get('console_scripts','').split(),
         'nbdev': [f'{cfg.get("lib_path")} = {cfg.get("lib_path")}._modidx:d'],
-        'ipython': [ 'aplnb=aplnb.core:load_ipython_extension' ]
+        'ipython': [ 'bashnb=bashnb.core:load_ipython_extension' ]
 
     },
     **setup_cfg)
