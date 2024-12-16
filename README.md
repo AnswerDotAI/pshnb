@@ -64,6 +64,8 @@ sourcing scripts, and changing directories.
 
 ## Features
 
+### Cell magic
+
 You can use the `%%psh` cell magic to run multi-line shell commands,
 such as here-docs. For instance:
 
@@ -87,6 +89,8 @@ rm tmp
 
     hi
     there
+
+### Variable expansion
 
 You can pipe commands together just like in a regular shell, and use
 standard unix utilities like `head` to process the output. For instance,
@@ -119,6 +123,50 @@ listing:
 
     ContextKit
     FastHTML-Gallery
+
+### Background tasks
+
+You can run commands in the background in the shell by adding `&` at the
+end of a command. The parentheses `(...)` group commands together to run
+as one unit. In this example, we first print “starting”, and then create
+a background process that will wait for 1 second (using `sleep 1`) and
+then print “finished”. The shell immediately shows us “starting” and
+tells us it created background process number 1 (with a process ID):
+
+``` python
+%%psh
+echo starting
+(sleep 1; echo finished) &
+```
+
+    starting
+    [1] 99418
+
+For this demonstration, we wait for 1.1 seconds (slightly longer than
+the background process needs). During this time, the background process
+will complete in the background. But we won’t see any output from it
+yet.
+
+``` python
+from time import sleep
+sleep(1.1)
+```
+
+The next time we run *any* `psh` magic we will also see any output that
+has occurred in our persistent shell since the last command. Run `%psh`
+by itself to *only* see those updates, e.g here we see that “finished”
+was printed, and the shell tells us that background job 1 completed
+successfully.
+
+``` python
+%psh
+```
+
+    finished
+
+    [1]+  Done                    ( sleep 1; echo finished )
+
+### Flags
 
 You can get help on the `%psh` magic’s options using `-h`.
 

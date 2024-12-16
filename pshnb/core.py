@@ -85,6 +85,7 @@ class PshMagic:
     @no_var_expand
     def psh(self, line, cell=None):
         "Run line or cell in persistent shell"
+        if not cell and not line: line = 'echo'
         if cell: cell = shell_replace(cell, self.shell)
         if line: line = shell_replace(line, self.shell)
         args = self.psh.parser.parse_args(line.split())
