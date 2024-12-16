@@ -39,7 +39,7 @@ for ext in ['png', 'svg']:
     long_description = re.sub(r'src=\"(.*)\.'+ext+'\"', 'src=\"' + raw.format(cfg['user'],cfg['lib_name'])+'/'+cfg['branch']+'/\\1.'+ext+'\"', long_description)
 
 setuptools.setup(
-    name = 'bashnb',
+    name = 'pshnb',
     license = lic[0],
     classifiers = [
         'Development Status :: ' + statuses[int(cfg['status'])],
@@ -59,7 +59,7 @@ setuptools.setup(
     entry_points = {
         'console_scripts': cfg.get('console_scripts','').split(),
         'nbdev': [f'{cfg.get("lib_path")} = {cfg.get("lib_path")}._modidx:d'],
-        'ipython': [ 'bashnb=bashnb.core:load_ipython_extension' ]
+        'ipython': [ 'pshnb=pshnb.core:load_ipython_extension' ]
 
     },
     **setup_cfg)
