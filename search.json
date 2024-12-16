@@ -1,0 +1,73 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Using psh magics",
+    "section": "",
+    "text": "pshnb adds %psh and %%psh functions to Jupyter and IPython, which execute expressions in a persistent shell.",
+    "crumbs": [
+      "Using `psh` magics"
+    ]
+  },
+  {
+    "objectID": "index.html#installation",
+    "href": "index.html#installation",
+    "title": "Using psh magics",
+    "section": "Installation",
+    "text": "Installation\nInstall pshnb with:\npip install pshnb\nOnce that’s complete, you can install the magics to all IPython and Jupyter sessions automatically by running in your terminal:\npshnb_install",
+    "crumbs": [
+      "Using `psh` magics"
+    ]
+  },
+  {
+    "objectID": "index.html#whats-the-point",
+    "href": "index.html#whats-the-point",
+    "title": "Using psh magics",
+    "section": "What’s the point?",
+    "text": "What’s the point?\nIn jupyter and ipython, you can run a shell command using the ! prefix:\n\n!pwd\n\n/Users/jhoward/Documents/GitHub/pshnb\n\n\nHowever, each time you run this command, a new shell is created and then removed, so for instance, cd doesn’t actually do anything if you run another command afterwards:\n\n!cd ..\n!pwd\n\n/Users/jhoward/Documents/GitHub/pshnb\n\n\nAs you see from the !pwd output, the directory hasn’t actually changed!\n%psh, on the other hand, creates a persistent shell, which solves this problem:\n\n%psh pwd\n\n/Users/jhoward/Documents/GitHub/pshnb\n\n\n\n%psh cd ..\n%psh pwd\n\n/Users/jhoward/Documents/GitHub\n\n\nWith %psh, you can implement, and document in notebooks, multi-step stateful shell interactions, including setting environment variables, sourcing scripts, and changing directories.",
+    "crumbs": [
+      "Using `psh` magics"
+    ]
+  },
+  {
+    "objectID": "index.html#features",
+    "href": "index.html#features",
+    "title": "Using psh magics",
+    "section": "Features",
+    "text": "Features\n\nCell magic\nYou can use the %%psh cell magic to run multi-line shell commands, such as here-docs. For instance:\n\n%%psh\ncat &gt; tmp &lt;&lt; EOF\nhi\nthere\nEOF\n\nThis creates a file called tmp containing two lines. Let’s check it worked, and then remove it – as you see, you can also use the cell magic to run multiple commands:\n\n%%psh\ncat tmp\nrm tmp\n\nhi\nthere\n\n\n\n\nVariable expansion\nYou can pipe commands together just like in a regular shell, and use standard unix utilities like head to process the output. For instance, here we show just the first 3 lines of the directory listing:\n\n%psh ls | head -3\n\nYou can use Python variables in your shell commands by prefixing them with @{}. For instance, here we create a variable n and then display it using echo:\n\nn = 2\n\n\n%psh echo @{n}\n\n2\n\n\nHere we use n to show just the first two entries from the directory listing:\n\n%psh ls | head -@{n}\n\nContextKit\nFastHTML-Gallery\n\n\n\n\nBackground tasks\nYou can run commands in the background in the shell by adding & at the end of a command. The parentheses (...) group commands together to run as one unit. In this example, we first print “starting”, and then create a background process that will wait for 1 second (using sleep 1) and then print “finished”. The shell immediately shows us “starting” and tells us it created background process number 1 (with a process ID):\n\n%%psh\necho starting\n(sleep 1; echo finished) &\n\nstarting\n[1] 99418\n\n\nFor this demonstration, we wait for 1.1 seconds (slightly longer than the background process needs). During this time, the background process will complete in the background. But we won’t see any output from it yet.\n\nfrom time import sleep\nsleep(1.1)\n\nThe next time we run any psh magic we will also see any output that has occurred in our persistent shell since the last command. Run %psh by itself to only see those updates, e.g here we see that “finished” was printed, and the shell tells us that background job 1 completed successfully.\n\n%psh\n\nfinished\n\n[1]+  Done                    ( sleep 1; echo finished )\n\n\n\n\nFlags\nYou can get help on the %psh magic’s options using -h.\n\n%psh -h\n\n::\n\n  %psh [-h] [-r] [-o] [-x] [-X] [-s] [-S] [-t TIMEOUT] [command ...]\n\nRun line or cell in persistent shell\n\npositional arguments:\n  command               The command to run\n\noptions:\n  -h, --help            Show this help\n  -r, --reset           Reset the shell interpreter\n  -o, --obj             Return this magic object\n  -x, --expand          Enable variable expansion\n  -X, --no-expand       Disable variable expansion\n  -s, --sudo            Enable sudo\n  -S, --no-sudo         Disable sudo\n  -t TIMEOUT, --timeout TIMEOUT\n                        Set timeout in seconds\n\n\nYou can reset the shell to its initial state using the -r flag. Let’s first check our current directory:\n\n%psh pwd\n\n/Users/jhoward/Documents/GitHub\n\n\nNow let’s reset the shell:\n\n%psh -r\n\nAs you can see, after resetting we’re back in our starting directory:\n\n%psh pwd\n\n/Users/jhoward/Documents/GitHub/pshnb\n\n\nThe -s flag enables sudo mode, which runs commands as the root user, and -S disables it. For instance, here we first enable sudo mode:\n\n%psh -s\n\nThen we can check which user we’re running as:\n\n%psh whoami\n\nroot\n\n\nAs you can see, we’re now running as root. We can disable sudo mode:\n\n%psh -S\n\nAnd when we check again, we’re back to our regular user:\n\n%psh whoami\n\njhoward\n\n\nYou can set a timeout (in seconds) using the -t flag, which will raise a TIMEOUT exception if a command takes too long. For instance, here we set a 1-second timeout:\n\n%psh -t 1\n\nThen we try to run a command that sleeps for 2 seconds – since this is longer than our timeout, we’ll get a timeout error:\n\ntry: get_ipython().run_line_magic('psh', 'sleep 2')\nexcept TIMEOUT: print(\"timed out\")",
+    "crumbs": [
+      "Using `psh` magics"
+    ]
+  },
+  {
+    "objectID": "CHANGELOG.html",
+    "href": "CHANGELOG.html",
+    "title": "Release notes",
+    "section": "",
+    "text": "Background task support (#2)\n\n\n\n\n\n\nInit working version"
+  },
+  {
+    "objectID": "CHANGELOG.html#section",
+    "href": "CHANGELOG.html#section",
+    "title": "Release notes",
+    "section": "",
+    "text": "Background task support (#2)"
+  },
+  {
+    "objectID": "CHANGELOG.html#section-1",
+    "href": "CHANGELOG.html#section-1",
+    "title": "Release notes",
+    "section": "",
+    "text": "Init working version"
+  },
+  {
+    "objectID": "core.html",
+    "href": "core.html",
+    "title": "pshnb IPython magic",
+    "section": "",
+    "text": "__file__ = './00_core.ipynb'\n\n\nenv = dict(os.environ, TERM='dumb', PS1='$', PS2='$')\neshell = os.environ['SHELL']\nsh = pexpect.spawn(eshell, encoding='utf-8', env=env)\n\n\nenv = dict(os.environ, TERM='dumb', PS1='', PS2='')\neshell = os.environ['SHELL']\nsh = pexpect.spawn(eshell, encoding='utf-8', env=env)\nsh.sendline('stty -echo')\nsh.readline()\necho = os.urandom(8).hex()\necho_re = re.compile(fr'^{echo}\\s*$', flags=re.MULTILINE)\nsh.sendline(f'export PS1=\"\"')\nsh.sendline('set +o vi +o emacs')\nsh.sendline('echo '+echo)\nsh.expect(echo_re, timeout=2)\n\n0\n\n\n\nsh.sendline('ls | head -3')\nsh.sendline('echo '+echo)\nsh.expect(echo_re, timeout=2)\nprint(sh.before)\n\n00_core.ipynb\nCHANGELOG.bak\nCHANGELOG.md\n\n\n\n\nsource\n\nShellInterpreter\n\n ShellInterpreter (debug=False, timeout=2, shell_path=None, sudo=False,\n                   dumb=False)\n\nInitialize self. See help(type(self)) for accurate signature.\n\nsh = ShellInterpreter()\nprint(sh('ls | head -3'))\n\n00_core.ipynb\nCHANGELOG.bak\nCHANGELOG.md\n\n\n\nsh = ShellInterpreter(sudo=True)\n\nsh('cd')\nprint(sh('pwd'))\nsh('cd ..')\nprint(sh('pwd'))\nprint(sh('whoami'))\n\n/var/root\n/var\nroot\n\n\n\nsource\n\n\nshell_replace\n\n shell_replace (s, shell=None)\n\nReplace @{var} refs in s with their variable values, if they exist\n\nb = 1\n\na = '''asdf\n$@{b} @{aa}\nfdsa'''\n\nprint(shell_replace(a))\n\nasdf\n$1 @{aa}\nfdsa\n\n\n\nsource\n\n\nPshMagic\n\n PshMagic (shell, sudo=False, timeout=2, expand=True, o=None)\n\nInitialize self. See help(type(self)) for accurate signature.\n\nsource\n\n\ncreate_magic\n\n create_magic (shell=None)\n\n\n# Only required if you don't load the extension\ncreate_magic()\n\n\n%psh pwd\n\n/Users/jhoward/Documents/GitHub/pshnb\n\n\n\n%psh cd ..\n\n\n%psh pwd\n\n/Users/jhoward/Documents/GitHub\n\n\n\n%%psh\ncat &gt; tmp &lt;&lt; EOF\nhi\nthere\nEOF\n\n\n%psh cat tmp\n\nhi\nthere\n\n\n\n%psh rm tmp\n\n\n%psh ls | head -3\n\nContextKit\nFastHTML-Gallery\naimagic\n\n\n\nn = 2\n\n\n%psh echo @{n}\n\n2\n\n\n\n%psh ls | head -@{n}\n\nContextKit\nFastHTML-Gallery\n\n\n\n%%psh\necho starting\n(sleep 1; echo finished) &\n\nstarting\n[1] 99418\n\n\n\n%psh\n\nfinished\n\n[1]+  Done                    ( sleep 1; echo finished )\n\n\n\n%psh -h\n\n::\n\n  %psh [-h] [-r] [-o] [-x] [-X] [-s] [-S] [-t TIMEOUT] [command ...]\n\nRun line or cell in persistent shell\n\npositional arguments:\n  command               The command to run\n\noptions:\n  -h, --help            Show this help\n  -r, --reset           Reset the shell interpreter\n  -o, --obj             Return this magic object\n  -x, --expand          Enable variable expansion\n  -X, --no-expand       Disable variable expansion\n  -s, --sudo            Enable sudo\n  -S, --no-sudo         Disable sudo\n  -t TIMEOUT, --timeout TIMEOUT\n                        Set timeout in seconds\n\n\n\n%psh pwd\n\n/Users/jhoward/Documents/GitHub\n\n\n\n%psh -r\n\n\n%psh pwd\n\n/Users/jhoward/Documents/GitHub/pshnb\n\n\n\n%psh -s\n\n\n%psh whoami\n\nroot\n\n\n\n%psh -S\n\n\n%psh whoami\n\njhoward\n\n\n\n%psh -t 1\n\n\ntry: get_ipython().run_line_magic('psh', 'sleep 2')\nexcept TIMEOUT: print(\"timed out\")\n\ntimed out\n\n\n\nsource\n\n\nload_ipython_extension\n\n load_ipython_extension (ipython)\n\nRequired function for creating magic\n\nsource\n\n\ncreate_ipython_config\n\n create_ipython_config ()\n\nCalled by pshnb_install to install magic",
+    "crumbs": [
+      "pshnb IPython magic"
+    ]
+  }
+]
