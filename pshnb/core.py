@@ -8,7 +8,6 @@ __all__ = ['ShellInterpreter', 'shell_replace', 'PshMagic', 'create_magic', 'loa
 # %% ../00_core.ipynb
 from fastcore.utils import *
 import pexpect, re, os, shutil
-from pexpect import TIMEOUT
 from pathlib import Path
 from IPython.core.magic import no_var_expand
 from IPython.paths import get_ipython_dir
