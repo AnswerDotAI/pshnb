@@ -7,7 +7,7 @@ __all__ = ['ShellInterpreter', 'shell_replace', 'PshMagic', 'create_magic', 'loa
 
 # %% ../00_core.ipynb
 from fastcore.utils import *
-import pexpect, re, os
+import pexpect, re, os, shutil
 from pexpect import TIMEOUT
 from pathlib import Path
 from getpass import getpass
@@ -19,9 +19,10 @@ from IPython.core.magic_arguments import magic_arguments, argument
 
 # %% ../00_core.ipynb
 class ShellInterpreter:
-    def __init__(self, debug=False, timeout=2, shell_path=None, sudo=False, dumb=False):
+    def __init__(self, debug=False, timeout=2, shell_path=None, sudo=False, dumb=True):
         self.debug,self.timeout = debug,timeout
-        if shell_path is None: shell_path = os.environ.get('SHELL', '/bin/bash')
+        if shell_path is None: 
+            shell_path = shutil.which('bash') or os.environ.get('SHELL', '/bin/bash')
         if sudo: shell_path = 'sudo -i ' + shell_path
         env = dict(os.environ, TERM='dumb' if dumb else 'xterm')
         self.sh = pexpect.spawn(shell_path, encoding='utf-8', env=env)
@@ -29,8 +30,15 @@ class ShellInterpreter:
         self.sh.readline()
         self.echo = os.urandom(8).hex()
         self.echo_re = re.compile(fr'^{self.echo}\s*$', flags=re.MULTILINE)
-        self.sh.sendline(f'export PS1=""')
-        self.sh.sendline(f'export PS2=""')
+        self.is_zsh = 'zsh' in shell_path.lower()
+        if self.is_zsh:
+            self.sh.sendline('unsetopt PROMPT_SP')
+            self.sh.sendline('setopt NO_ZLE')
+            self.sh.sendline('unsetopt zle')
+        self.sh.sendline('PROMPT=""')
+        self.sh.sendline('PROMPT2=""')
+        self.sh.sendline('export PS1=""')
+        self.sh.sendline('export PS2=""')
         self.sh.sendline('set +o vi +o emacs')
         self.wait_echo()
 
@@ -61,8 +69,9 @@ def shell_replace(s, shell=None):
 # %% ../00_core.ipynb
 class PshMagic:
     def __init__(self, shell, sudo=False, timeout=2, expand=True, o=None): store_attr()
-    def reset(self): self.o = ShellInterpreter(sudo=self.sudo, timeout=self.timeout)
-    def help (self): self.psh.parser.print_help()
+    def help (self): self.bash.parser.print_help()
+    def reset(self, shell_path=None): 
+        self.o = ShellInterpreter(sudo=self.sudo, timeout=self.timeout, shell_path=shell_path)
 
     def _xpand(self, expand=False): self.expand = expand
     def _sudo(self, sudo=False):
@@ -74,7 +83,7 @@ class PshMagic:
 
     @magic_arguments()
     @argument('-h', '--help',      action='store_true', help='Show this help')
-    @argument('-r', '--reset',     action='store_true', help='Reset the shell interpreter')
+    @argument('-r', '--reset', nargs='?', const=True, help='Reset the shell interpreter (optionally choose shell)')
     @argument('-o', '--obj',       action='store_true', help='Return this magic object')
     @argument('-x', '--expand',    action='store_true', help='Enable variable expansion')
     @argument('-X', '--no-expand', action='store_true', help='Disable variable expansion')
@@ -83,21 +92,22 @@ class PshMagic:
     @argument('-t', '--timeout', type=int, help='Set timeout in seconds')
     @argument('command', nargs='*', help='The command to run')
     @no_var_expand
-    def psh(self, line, cell=None):
+    def bash(self, line, cell=None):
         "Run line or cell in persistent shell"
         if not cell and not line: line = 'echo'
         if cell: cell = shell_replace(cell, self.shell)
         if line: line = shell_replace(line, self.shell)
-        args = self.psh.parser.parse_args(line.split())
-        if args.expand:    return self._xpand(True)
-        if args.no_expand: return self._xpand(False)
-        if args.sudo:      return self._sudo (True)
-        if args.no_sudo:   return self._sudo (False)
-        if args.timeout:   return self._timeout(args.timeout)
-        if args.reset:     return self.reset()
-        if args.help:      return self.help()
-        if args.obj:       return self
-        if args.command: cell = ' '.join(args.command)
+        args = self.bash.parser.parse_args(line.split())
+        if not args.command and not cell:
+            if args.expand:    return self._xpand(True)
+            if args.no_expand: return self._xpand(False)
+            if args.sudo:      return self._sudo (True)
+            if args.no_sudo:   return self._sudo (False)
+            if args.timeout:   return self._timeout(args.timeout)
+            if args.reset:     return self.reset(args.reset if isinstance(args.reset, str) else None)
+            if args.help:      return self.help()
+            if args.obj:       return self
+            if args.command: cell = ' '.join(args.command)
         if not cell and line: cell=line
         disp = True
         if cell.endswith(';'): disp,cell = False,cell[:-1]
@@ -112,7 +122,7 @@ class PshMagic:
 def create_magic(shell=None):
     if not shell: shell = get_ipython()
     magic = PshMagic(shell)
-    shell.register_magic_function(magic.psh, magic_name='psh', magic_kind='line_cell')
+    shell.register_magic_function(magic.bash, magic_name='bash', magic_kind='line_cell')
 
 # %% ../00_core.ipynb
 def load_ipython_extension(ipython):

@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "pshnb"
+  site-url: "https://answerdotai.github.io/pshnb"
+  description: "AI magic"
+  repo-branch: main
+  repo-url: "https://github.com/answerdotai/pshnb"
