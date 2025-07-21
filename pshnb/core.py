@@ -114,12 +114,15 @@ class PshMagic:
             raise e from None
         if disp and res: print(res)
 
+    @magic_arguments()
+    @argument('-a', '--append', action='store_true', help='Append contents of the cell to an existing file. The file will be created if it does not exist.')
+    @argument('filename', help='File to write')
+    @no_var_expand
     def writefile(self, line, cell):
         "Write cell contents to a file in the current shell directory"
-        if not line.strip(): raise ValueError("Must specify a filename")
-        if not self.o: self.reset()    
-        fp = Path(self.o('pwd').strip()) / line.strip().split()[0]
-        fp.write_text(cell)
+        args = self.writefile.parser.parse_args(line.split())
+        fp = Path(self.o('pwd').strip()) / args.filename 
+        with open(fp, 'a' if args.append else 'w') as f: f.write(cell)
 
 # %% ../00_core.ipynb
 def create_magic(shell=None):
