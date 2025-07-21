@@ -60,6 +60,13 @@ class ShellInterpreter:
         return output.replace(cmd + '\r\n', '', 1).rstrip()
 
 # %% ../00_core.ipynb
+@patch
+def sync_cwd(self:ShellInterpreter):
+    "Sync session's cwd to match pshnb's cwd"
+    _cwd = self._ex('pwd').strip()
+    if _cwd != os.getcwd(): os.chdir(_cwd)
+
+# %% ../00_core.ipynb
 def shell_replace(s, shell=None):
     "Replace `@{var}` refs in `s` with their variable values, if they exist"
     if not shell: shell = get_ipython()
@@ -89,6 +96,7 @@ class PshMagic:
     @argument('-X', '--no-expand', action='store_true', help='Disable variable expansion')
     @argument('-s', '--sudo',      action='store_true', help='Enable sudo')
     @argument('-S', '--no-sudo',   action='store_true', help='Disable sudo')
+    @argument('-c', '--cwd',       action='store_true', help="Sync session's cwd to match pshnb's cwd")
     @argument('-t', '--timeout', type=int, help='Set timeout in seconds')
     @argument('command', nargs='*', help='The command to run')
     @no_var_expand
@@ -98,6 +106,7 @@ class PshMagic:
         if cell: cell = shell_replace(cell, self.shell)
         if line: line = shell_replace(line, self.shell)
         args = self.bash.parser.parse_args(line.split())
+        if not self.o: self.reset()
         if not args.command and not cell:
             if args.expand:    return self._xpand(True)
             if args.no_expand: return self._xpand(False)
@@ -107,11 +116,11 @@ class PshMagic:
             if args.reset:     return self.reset(args.reset if isinstance(args.reset, str) else None)
             if args.help:      return self.help()
             if args.obj:       return self
+            if args.cwd:       return self.o.sync_cwd()
             if args.command: cell = ' '.join(args.command)
         if not cell and line: cell=line
         disp = True
         if cell.endswith(';'): disp,cell = False,cell[:-1]
-        if not self.o: self.reset()
         try: res = self.o(cell) or None
         except Exception as e:
             self.o = None
