@@ -10,11 +10,8 @@ from fastcore.utils import *
 import pexpect, re, os, shutil
 from pexpect import TIMEOUT
 from pathlib import Path
-from getpass import getpass
-from IPython.core.magic import register_cell_magic, no_var_expand
-from IPython.display import display, Javascript
+from IPython.core.magic import no_var_expand
 from IPython.paths import get_ipython_dir
-from IPython.core.interactiveshell import InteractiveShell
 from IPython.core.magic_arguments import magic_arguments, argument
 
 # %% ../00_core.ipynb
@@ -118,11 +115,20 @@ class PshMagic:
             raise e from None
         if disp and res: print(res)
 
+    def writefile(self, line, cell):
+        "Write cell contents to a file in the current shell directory"
+        if not line.strip(): raise ValueError("Must specify a filename")
+        if not self.o: self.reset()    
+        fp = Path(self.o('pwd').strip()) / line.strip().split()[0]
+        fp.write_text(cell)
+
 # %% ../00_core.ipynb
 def create_magic(shell=None):
     if not shell: shell = get_ipython()
     magic = PshMagic(shell)
     shell.register_magic_function(magic.bash, magic_name='bash', magic_kind='line_cell')
+    shell.register_magic_function(magic.writefile, magic_name='writefile', magic_kind='cell')
+
 
 # %% ../00_core.ipynb
 def load_ipython_extension(ipython):
