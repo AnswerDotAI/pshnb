@@ -1,0 +1,90 @@
+[
+  {
+    "objectID": "core.html",
+    "href": "core.html",
+    "title": "pshnb IPython magic",
+    "section": "",
+    "text": "__file__ = './00_core.ipynb'",
+    "crumbs": [
+      "pshnb IPython magic"
+    ]
+  },
+  {
+    "objectID": "core.html#foundations",
+    "href": "core.html#foundations",
+    "title": "pshnb IPython magic",
+    "section": "Foundations",
+    "text": "Foundations\n\nenv = dict(os.environ, TERM='dumb', PS1='$', PS2='$')\neshell = os.environ['SHELL']\nsh = pexpect.spawn(eshell, encoding='utf-8', env=env)\n\nThis cell creates the initial shell process using pexpect.spawn() with a basic environment configuration. The key setup includes:\n\nEnvironment variables: Sets TERM='dumb' to prevent terminal formatting issues, and standardizes prompts with PS1='$' and PS2='$'\nShell spawning: Creates a persistent shell process using the user’s default shell ($SHELL) with UTF-8 encoding\nProcess persistence: The sh object maintains a continuous connection to the shell, allowing commands to be sent and responses captured across multiple interactions\n\nPS1 is the primary shell prompt (what you see when the shell is ready for a command), and PS2 is the secondary prompt (shown when a command spans multiple lines or is incomplete). pexpect is a Python library for controlling interactive command-line programs by automating the sending of inputs and reading of outputs. It’s particularly useful for automating tasks that normally require human interaction. spawn is pexpect’s main function that starts a child process (like a shell) and returns a pexpect object that can communicate with it. Unlike subprocess, spawn maintains an interactive session - you can send commands, wait for responses, and continue the conversation with the same process instance.\nThis establishes the foundation for persistent shell state - variables, directory changes, and other shell modifications will persist between command executions.\n\nenv = dict(os.environ, TERM='dumb', PS1='', PS2='')\nsh = pexpect.spawn(eshell, encoding='utf-8', env=env)\nsh.sendline('stty -echo')\nsh.readline()\necho = os.urandom(8).hex()\necho_re = re.compile(fr'^{echo}\\s*$', flags=re.MULTILINE)\nsh.sendline(f'export PS1=\"\"')\nsh.sendline('set +o vi +o emacs')\nsh.sendline('echo '+echo)\nsh.expect(echo_re, timeout=2)\n\n0\n\n\nThis cell implements a more sophisticated shell setup that addresses output formatting and command echo issues:\n\nEcho suppression: Uses stty -echo to prevent command echoing, which is crucial for clean output capture\nEmpty prompts: Sets PS1=\"\" and PS2=\"\" to eliminate prompt strings that would interfere with output parsing\nLine editing disabled: Runs set +o vi +o emacs to disable interactive line editing features that can cause issues in programmatic shell interaction\nSynchronization mechanism: Establishes a unique echo token using os.urandom(8).hex() and corresponding regex pattern for reliable command completion detection\n\nThe echo token system is particularly important - it provides a reliable way to detect when a command has finished executing by sending a unique marker and waiting for it to appear in the output.\n\nsh.sendline('ls | head -3')\nsh.sendline('echo '+echo)\nsh.expect(echo_re, timeout=2)\nprint(sh.before)\n\n_docs\n_proc\n_quarto.yml\n\n\n\nThis cell demonstrates the practical application of the configured shell for command execution and output capture:\n\nCommand execution: Sends ls | head -3 to list the first three files in the current directory\nCompletion detection: Uses the echo token mechanism (echo [random_hex]) followed by sh.expect(echo_re) to reliably detect when the command has finished\nClean output extraction: Captures the command output via sh.before, which contains everything received before the expected echo token\n\nThis pattern shows how the kernel can execute arbitrary bash commands while maintaining clean separation between command output and shell control mechanisms. The timeout parameter (2 seconds) provides protection against hanging commands, which is essential for a responsive interactive environment.\n\nsource\n\nShellInterpreter\n\n ShellInterpreter (debug=False, timeout=2, shell_path=None, sudo=False,\n                   dumb=True)\n\nInitialize self. See help(type(self)) for accurate signature.\n\nsh = ShellInterpreter()\nprint(sh('ls | head -3'))\n\n_docs\n_proc\n_quarto.yml\n\n\nNB: requires passwordless sudo to use this:\n\n# sh = ShellInterpreter(sudo=True)\n\n# sh('cd')\n# print(sh('pwd'))\n# sh('cd ..')\n# print(sh('pwd'))\n# print(sh('whoami'))\n\n\nsource\n\n\nShellInterpreter.sync_cwd\n\n ShellInterpreter.sync_cwd ()\n\nSync session’s cwd to match pshnb’s cwd\n\nsource\n\n\nshell_replace\n\n shell_replace (s, shell=None)\n\nReplace @{var} refs in s with their variable values, if they exist\n\nb = 1\n\na = '''asdf\n$@{b} @{aa}\nfdsa'''\n\nprint(shell_replace(a))\n\nasdf\n$1 @{aa}\nfdsa\n\n\n\nsource\n\n\nPshMagic\n\n PshMagic (shell, sudo=False, timeout=2, expand=True, o=None)\n\nInitialize self. See help(type(self)) for accurate signature.\nThese changes allow -r to work as before (reset with default shell) and also accept an optional shell path like -r /bin/zsh or --reset=/bin/bash.\n\nsource\n\n\ncreate_magic\n\n create_magic (shell=None)\n\n\n# Only required if you don't load the extension\ncreate_magic()\n\n\n%bash pwd\n\n/Users/jhoward/aai-ws/pshnb\n\n\n\n%bash ls -h\n\n_docs       CHANGELOG.bak   LICENSE     pshnb.egg-info  setup.py\n_proc       CHANGELOG.md    MANIFEST.in pyproject.toml  sidebar.yml\n_quarto.yml dist        nbdev.yml   README.md   styles.css\n00_core.ipynb   index.ipynb pshnb       settings.ini\n\n\n\n%bash cd ..\n\n\n%bash pwd\n\n/Users/jhoward/aai-ws\n\n\n\n%%bash\ncat &gt; tmp &lt;&lt; EOF\nhi\nthere\nEOF\n\n\n%bash cat tmp\n\nhi\nthere\n\n\n\n%bash rm tmp\n\n\n%bash ls | head -3\n\n_nbs\n_proc\naddnew.py\n\n\n\n%bash -c\n\n\nos.getcwd()\n\n'/Users/jhoward/aai-ws'\n\n\n\nn = 2\n\n\n%bash echo @{n}\n\n2\n\n\n\n%bash ls | head -@{n}\n\n_nbs\n_proc\n\n\n\n%%bash\necho starting\n(sleep 1; echo finished) &\n\nstarting\n[1] 18411\n\n\n\n%bash\n\nfinished\n\n[1]+  Done                    ( sleep 1; echo finished )\n\n\n\n%bash -h\n\n::\n\n  %bash [-h] [-r [RESET]] [-o] [-x] [-X] [-s] [-S] [-t TIMEOUT]\n            [command ...]\n\nRun line or cell in persistent shell\n\npositional arguments:\n  command               The command to run\n\noptions:\n  -h, --help            Show this help\n  -r &lt;[RESET]&gt;, --reset &lt;[RESET]&gt;\n                        Reset the shell interpreter (optionally choose shell)\n  -o, --obj             Return this magic object\n  -x, --expand          Enable variable expansion\n  -X, --no-expand       Disable variable expansion\n  -s, --sudo            Enable sudo\n  -S, --no-sudo         Disable sudo\n  -t TIMEOUT, --timeout TIMEOUT\n                        Set timeout in seconds\n\n\n\n%bash pwd\n\n/Users/jhoward/aai-ws\n\n\nReset the interpreter:\n\n%bash -r\n\n\n%bash pwd\n\n/Users/jhoward/aai-ws/pshnb\n\n\n\n%bash echo $SHELL\n\n/opt/homebrew/bin/bash\n\n\nsudo:\n\n%bash -s\n\n\n%bash whoami\n\nroot\n\n\nno sudo:\n\n%bash -S\n\n\n%bash whoami\n\njhoward\n\n\ntimeout:\n\n%bash -t 1\n\n\ntry: get_ipython().run_line_magic('bash', 'sleep 2')\nexcept TIMEOUT: print(\"timed out\")\n\ntimed out\n\n\n\nsource\n\n\nload_ipython_extension\n\n load_ipython_extension (ipython)\n\nRequired function for creating magic\n\nsource\n\n\ncreate_ipython_config\n\n create_ipython_config ()\n\nCalled by pshnb_install to install magic",
+    "crumbs": [
+      "pshnb IPython magic"
+    ]
+  },
+  {
+    "objectID": "CHANGELOG.html",
+    "href": "CHANGELOG.html",
+    "title": "Release notes",
+    "section": "",
+    "text": "Handle trailing flags on line magic (#4)\nUse bash by default (#4)\nChange magic to bash (#4)\n\n\n\n\n\n\n\n\nBackground task support (#2)\n\n\n\n\n\n\nInit working version"
+  },
+  {
+    "objectID": "CHANGELOG.html#section",
+    "href": "CHANGELOG.html#section",
+    "title": "Release notes",
+    "section": "",
+    "text": "Handle trailing flags on line magic (#4)\nUse bash by default (#4)\nChange magic to bash (#4)"
+  },
+  {
+    "objectID": "CHANGELOG.html#section-1",
+    "href": "CHANGELOG.html#section-1",
+    "title": "Release notes",
+    "section": "",
+    "text": "Background task support (#2)"
+  },
+  {
+    "objectID": "CHANGELOG.html#section-2",
+    "href": "CHANGELOG.html#section-2",
+    "title": "Release notes",
+    "section": "",
+    "text": "Init working version"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Using psh magics",
+    "section": "",
+    "text": "pshnb adds %bash and %%bash functions to Jupyter and IPython, which execute expressions in a persistent shell.",
+    "crumbs": [
+      "Using `psh` magics"
+    ]
+  },
+  {
+    "objectID": "index.html#installation",
+    "href": "index.html#installation",
+    "title": "Using psh magics",
+    "section": "Installation",
+    "text": "Installation\nInstall pshnb with:\npip install pshnb\nOnce that’s complete, you can install the magics to all IPython and Jupyter sessions automatically by running in your terminal:\npshnb_install\nIf you don’t want to install the automatic magic, you can instead run in notebooks where you want to use it:\n%load_ext pshnb",
+    "crumbs": [
+      "Using `psh` magics"
+    ]
+  },
+  {
+    "objectID": "index.html#whats-the-point",
+    "href": "index.html#whats-the-point",
+    "title": "Using psh magics",
+    "section": "What’s the point?",
+    "text": "What’s the point?\nIn jupyter and ipython, you can run a shell command using the ! prefix:\n\n!pwd\n\n/Users/jhoward/aai-ws/pshnb\n\n\nHowever, each time you run this command, a new shell is created and then removed, so for instance, cd doesn’t actually do anything if you run another command afterwards:\n\n!cd ..\n!pwd\n\n/Users/jhoward/aai-ws/pshnb\n\n\nAs you see from the !pwd output, the directory hasn’t actually changed!\n%bash, on the other hand, creates a persistent shell, which solves this problem:\n\n%load_ext pshnb\n\n\n%bash pwd\n\n/Users/jhoward/aai-ws/pshnb\n\n\n\n%bash cd ..\n%bash pwd\n\n/Users/jhoward/aai-ws\n\n\nWith %bash, you can implement, and document in notebooks, multi-step stateful shell interactions, including setting environment variables, sourcing scripts, and changing directories.",
+    "crumbs": [
+      "Using `psh` magics"
+    ]
+  },
+  {
+    "objectID": "index.html#features",
+    "href": "index.html#features",
+    "title": "Using psh magics",
+    "section": "Features",
+    "text": "Features\n\nCell magic\nYou can use the %%bash cell magic to run multi-line shell commands, such as here-docs. For instance:\n\n%%bash\ncat &gt; tmp &lt;&lt; EOF\nhi\nthere\nEOF\n\nThis creates a file called tmp containing two lines. Let’s check it worked, and then remove it – as you see, you can also use the cell magic to run multiple commands:\n\n%%bash\ncat tmp\nrm tmp\n\nhi\nthere\n\n\n\n\nVariable expansion\nYou can pipe commands together just like in a regular shell, and use standard unix utilities like head to process the output. For instance, here we show just the first 3 lines of the directory listing:\n\n%bash ls | head -3\n\n_nbs\n_proc\naddnew.py\n\n\nYou can use Python variables in your shell commands by prefixing them with @{}. For instance, here we create a variable n and then display it using echo:\n\nn = 2\n\n\n%bash echo @{n}\n\n2\n\n\nHere we use n to show just the first two entries from the directory listing:\n\n%bash ls | head -@{n}\n\n_nbs\n_proc\n\n\n\n\nBackground tasks\nYou can run commands in the background in the shell by adding & at the end of a command. The parentheses (...) group commands together to run as one unit. In this example, we first print “starting”, and then create a background process that will wait for 1 second (using sleep 1) and then print “finished”. The shell immediately shows us “starting” and tells us it created background process number 1 (with a process ID):\n\n%%bash\necho starting\n(sleep 1; echo finished) &\n\nstarting\n[1] 18618\n\n\nFor this demonstration, we wait for 1.1 seconds (slightly longer than the background process needs). During this time, the background process will complete in the background. But we won’t see any output from it yet.\n\nfrom time import sleep\nsleep(1.1)\n\nThe next time we run any psh magic we will also see any output that has occurred in our persistent shell since the last command. Run %bash by itself to only see those updates, e.g here we see that “finished” was printed, and the shell tells us that background job 1 completed successfully.\n\n%bash\n\nfinished\n\n[1]+  Done                    ( sleep 1; echo finished )\n\n\n\n\nFlags\nYou can get help on the %bash magic’s options using -h.\n\n%bash -h\n\n::\n\n  %bash [-h] [-r [RESET]] [-o] [-x] [-X] [-s] [-S] [-t TIMEOUT]\n            [command ...]\n\nRun line or cell in persistent shell\n\npositional arguments:\n  command               The command to run\n\noptions:\n  -h, --help            Show this help\n  -r &lt;[RESET]&gt;, --reset &lt;[RESET]&gt;\n                        Reset the shell interpreter (optionally choose shell)\n  -o, --obj             Return this magic object\n  -x, --expand          Enable variable expansion\n  -X, --no-expand       Disable variable expansion\n  -s, --sudo            Enable sudo\n  -S, --no-sudo         Disable sudo\n  -t TIMEOUT, --timeout TIMEOUT\n                        Set timeout in seconds\n\n\nYou can reset the shell to its initial state using the -r flag. Let’s first check our current directory:\n\n%bash pwd\n\n/Users/jhoward/aai-ws\n\n\nNow let’s reset the shell:\n\n%bash -r\n\nAs you can see, after resetting we’re back in our starting directory:\n\n%bash pwd\n\n/Users/jhoward/aai-ws/pshnb\n\n\nThe -s flag enables sudo mode, which runs commands as the root user, and -S disables it. For instance, here we first enable sudo mode:\n\n%bash -s\n\nThen we can check which user we’re running as:\n\n%bash whoami\n\nroot\n\n\nAs you can see, we’re now running as root. We can disable sudo mode:\n\n%bash -S\n\nAnd when we check again, we’re back to our regular user:\n\n%bash whoami\n\njhoward\n\n\nYou can set a timeout (in seconds) using the -t flag, which will raise a TIMEOUT exception if a command takes too long. For instance, here we set a 1-second timeout:\n\n%bash -t 1\n\nThen we try to run a command that sleeps for 2 seconds – since this is longer than our timeout, we’ll get a timeout error:\n\nfrom pexpect import TIMEOUT\n\n\ntry: get_ipython().run_line_magic('bash', 'sleep 2')\nexcept TIMEOUT: print(\"timed out\")\n\ntimed out",
+    "crumbs": [
+      "Using `psh` magics"
+    ]
+  }
+]
