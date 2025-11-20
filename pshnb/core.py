@@ -7,7 +7,7 @@ __all__ = ['ShellInterpreter', 'shell_replace', 'PshMagic', 'create_magic', 'loa
 
 # %% ../00_core.ipynb
 from fastcore.utils import *
-import pexpect, re, os, shutil
+import pexpect, re, os, shutil, time
 from pexpect import TIMEOUT
 from pathlib import Path
 from getpass import getpass
@@ -19,22 +19,23 @@ from IPython.core.magic_arguments import magic_arguments, argument
 
 # %% ../00_core.ipynb
 class ShellInterpreter:
-    def __init__(self, debug=False, timeout=2, shell_path=None, sudo=False, dumb=True):
+    def __init__(self, debug=False, timeout=4, shell_path='bash', sudo=False, dumb=True, ssh=None):
         self.debug,self.timeout = debug,timeout
-        if shell_path is None: 
-            shell_path = shutil.which('bash') or os.environ.get('SHELL', '/bin/bash')
         if sudo: shell_path = 'sudo -i ' + shell_path
         env = dict(os.environ, TERM='dumb' if dumb else 'xterm')
-        self.sh = pexpect.spawn(shell_path, encoding='utf-8', env=env)
+        self.sh = pexpect.spawn('bash' if ssh else shell_path, encoding='utf-8', env=env)
+        if ssh: self.sh.sendline(f'ssh -tt {ssh} {shell_path} --norc --noprofile')
+        if isinstance(sudo,str):
+            self.sh.expect('password')
+            self.sh.sendline(sudo)
+            self.sh.expect('\n')
+        self.setup()
+        
+    def setup(self):
         self.sh.sendline('stty -echo')
-        self.sh.readline()
+        self.sh.expect('\n')
         self.echo = os.urandom(8).hex()
         self.echo_re = re.compile(fr'^{self.echo}\s*$', flags=re.MULTILINE)
-        self.is_zsh = 'zsh' in shell_path.lower()
-        if self.is_zsh:
-            self.sh.sendline('unsetopt PROMPT_SP')
-            self.sh.sendline('setopt NO_ZLE')
-            self.sh.sendline('unsetopt zle')
         self.sh.sendline('PROMPT=""')
         self.sh.sendline('PROMPT2=""')
         self.sh.sendline('export PS1=""')
@@ -46,7 +47,7 @@ class ShellInterpreter:
         self.sh.sendline('echo')
         self.sh.sendline('echo '+self.echo)
         self.sh.expect(self.echo_re, timeout=timeout)
-        return self.sh.before.rstrip()
+        return self.sh.before.lstrip('\r\n').rstrip()
 
     def _ex(self, s, timeout=None):
         if timeout is None: timeout=self.timeout
@@ -57,7 +58,8 @@ class ShellInterpreter:
         
     def __call__(self, cmd, timeout=None):
         output = self._ex(cmd.rstrip(), timeout=timeout)
-        return output.replace(cmd + '\r\n', '', 1).rstrip()
+        # return output.replace(cmd + '\r\n', '', 1).rstrip()
+        return output.rstrip()
 
 # %% ../00_core.ipynb
 @patch
@@ -75,57 +77,64 @@ def shell_replace(s, shell=None):
 
 # %% ../00_core.ipynb
 class PshMagic:
-    def __init__(self, shell, sudo=False, timeout=2, expand=True, o=None): store_attr()
+    def __init__(self, shell, sudo=False, timeout=2, expand=True, o=None, ssh=None): store_attr()
     def help (self): self.bash.parser.print_help()
-    def reset(self, shell_path=None): 
-        self.o = ShellInterpreter(sudo=self.sudo, timeout=self.timeout, shell_path=shell_path)
+    def reset(self, ssh=None): 
+        self.ssh = ssh
+        self.o = ShellInterpreter(sudo=self.sudo, timeout=self.timeout, ssh=ssh)
 
     def _xpand(self, expand=False): self.expand = expand
     def _sudo(self, sudo=False):
         self.sudo = sudo
         self.o = None
-    def _timeout(self, timeout=2):
+    def _timeout(self, timeout=5):
         self.timeout = timeout
         self.o = None
 
-    @magic_arguments()
-    @argument('-h', '--help',      action='store_true', help='Show this help')
-    @argument('-r', '--reset', nargs='?', const=True, help='Reset the shell interpreter (optionally choose shell)')
-    @argument('-o', '--obj',       action='store_true', help='Return this magic object')
-    @argument('-x', '--expand',    action='store_true', help='Enable variable expansion')
-    @argument('-X', '--no-expand', action='store_true', help='Disable variable expansion')
-    @argument('-s', '--sudo',      action='store_true', help='Enable sudo')
-    @argument('-S', '--no-sudo',   action='store_true', help='Disable sudo')
-    @argument('-c', '--cwd',       action='store_true', help="Sync session's cwd to match pshnb's cwd")
-    @argument('-t', '--timeout', type=int, help='Set timeout in seconds')
-    @argument('command', nargs='*', help='The command to run')
-    @no_var_expand
-    def bash(self, line, cell=None):
-        "Run line or cell in persistent shell"
-        if not cell and not line: line = 'echo'
-        if cell: cell = shell_replace(cell, self.shell)
-        if line: line = shell_replace(line, self.shell)
-        args = self.bash.parser.parse_args(line.split())
-        if not self.o: self.reset()
-        if not args.command and not cell:
-            if args.expand:    return self._xpand(True)
-            if args.no_expand: return self._xpand(False)
-            if args.sudo:      return self._sudo (True)
-            if args.no_sudo:   return self._sudo (False)
-            if args.timeout:   return self._timeout(args.timeout)
-            if args.reset:     return self.reset(args.reset if isinstance(args.reset, str) else None)
-            if args.help:      return self.help()
-            if args.obj:       return self
-            if args.cwd:       return self.o.sync_cwd()
-            if args.command: cell = ' '.join(args.command)
-        if not cell and line: cell=line
-        disp = True
-        if cell.endswith(';'): disp,cell = False,cell[:-1]
-        try: res = self.o(cell) or None
-        except Exception as e:
-            self.o = None
-            raise e from None
-        if disp and res: print(res)
+# %% ../00_core.ipynb
+@patch
+@magic_arguments()
+@argument('-h', '--help',      action='store_true', help='Show this help')
+@argument('-r', '--reset',   nargs='?', const=True, help='Reset the shell interpreter (optionally run ssh)')
+@argument('-o', '--obj',       action='store_true', help='Return the `ShellInterpreter`')
+@argument('-x', '--expand',    action='store_true', help='Enable variable expansion')
+@argument('-X', '--no-expand', action='store_true', help='Disable variable expansion')
+@argument('-s', '--sudo',    nargs='?', const=True, help='Enable sudo')
+@argument('-S', '--no-sudo',   action='store_true', help='Disable sudo')
+@argument('-c', '--cwd',       action='store_true', help="Sync session's cwd to match pshnb's cwd")
+@argument('-e', '--escape',  nargs='+', help='SSH escape code and optional command')
+@argument('-t', '--timeout',  type=int, help='Set timeout in seconds')
+@argument('command', nargs='*', help='The command to run')
+@no_var_expand
+def bash(self:PshMagic, line, cell=None):
+    "Run line or cell in persistent shell"
+    if not cell and not line: line = 'echo'
+    if cell: cell = shell_replace(cell, self.shell)
+    if line: line = shell_replace(line, self.shell)
+    args = self.bash.parser.parse_args(line.split())
+    if args.command and not self.o: self.reset(self.ssh)
+    elif not cell:
+        if args.expand:    return self._xpand(True)
+        if args.no_expand: return self._xpand(False)
+        if args.sudo:      return self._sudo (args.sudo if isinstance(args.sudo, str) else True)
+        if args.no_sudo:   return self._sudo (False)
+        if args.timeout:   return self._timeout(args.timeout)
+        if args.reset:     return self.reset(args.reset if isinstance(args.reset, str) else None)
+        if args.help:      return self.help()
+        if args.obj:       return self.o
+        if args.cwd:       return self.o.sync_cwd()
+        if args.escape:
+            escargs = ' '.join(args.escape[1:]) if len(args.escape)>1 else None
+            return self.o.ssh_escape(args.escape[0], escargs)
+        if args.command: cell = ' '.join(args.command)
+    if not cell and line: cell=line
+    disp = True
+    if cell.endswith(';'): disp,cell = False,cell[:-1]
+    try: res = self.o(cell) or None
+    except Exception as e:
+        self.o = None
+        raise e from None
+    if disp and res: print(res)
 
 # %% ../00_core.ipynb
 def create_magic(shell=None):
