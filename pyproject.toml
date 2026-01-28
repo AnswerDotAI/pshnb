@@ -24,8 +24,14 @@ Documentation = "https://answerdotai.github.io/pshnb"
 [project.entry-points.nbdev]
 pshnb = "pshnb._modidx:d"
 
+[project.scripts]
+pshnb_install=pshnb.core:create_ipython_config
+
 [tool.setuptools.dynamic]
 version = {attr = "pshnb.__version__"}
+
+[project.scripts]
+pshnb_install=pshnb.core:create_ipython_config
 
 [tool.setuptools.packages.find]
 include = ["pshnb"]
