@@ -1,11 +1,36 @@
 [build-system]
-requires = ["setuptools>=64.0"]
+requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name="pshnb"
+dynamic = ["version"]
+description = "AI magic"
+readme = "README.md"
 requires-python=">=3.9"
-dynamic = [ "keywords", "description", "version", "dependencies", "optional-dependencies", "readme", "license", "authors", "classifiers", "entry-points", "scripts", "urls"]
+license = {text = "Apache-2.0"}
+authors = [{name = "Jeremy Howard", email = "info@answer.ai"}]
+keywords = ['nbdev', 'jupyter', 'notebook', 'python', 'bash']
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+]
+dependencies = []
 
-[tool.uv]
-cache-keys = [{ file = "pyproject.toml" }, { file = "settings.ini" }, { file = "setup.py" }]
+[project.urls]
+Repository = "https://github.com/answerdotai/pshnb"
+Documentation = "https://answerdotai.github.io/pshnb"
+
+[project.entry-points.nbdev]
+pshnb = "pshnb._modidx:d"
+
+[tool.setuptools.dynamic]
+version = {attr = "pshnb.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["pshnb"]
+
+[tool.nbdev]
+nbs_path = '.'
+recursive = false
+custom_sidebar = false
