@@ -1,0 +1,128 @@
+[
+  {
+    "objectID": "core.html",
+    "href": "core.html",
+    "title": "pshnb IPython magic",
+    "section": "",
+    "text": "__file__ = './00_core.ipynb'",
+    "crumbs": [
+      "pshnb IPython magic"
+    ]
+  },
+  {
+    "objectID": "core.html#foundations",
+    "href": "core.html#foundations",
+    "title": "pshnb IPython magic",
+    "section": "Foundations",
+    "text": "Foundations\n\nenv = dict(os.environ, TERM='dumb', PS1='$', PS2='$')\neshell = os.environ['SHELL']\nsh = pexpect.spawn(eshell, encoding='utf-8', env=env)\n\nThis cell creates the initial shell process using pexpect.spawn() with a basic environment configuration. The key setup includes:\n\nEnvironment variables: Sets TERM='dumb' to prevent terminal formatting issues, and standardizes prompts with PS1='$' and PS2='$'\nShell spawning: Creates a persistent shell process using the user’s default shell ($SHELL) with UTF-8 encoding\nProcess persistence: The sh object maintains a continuous connection to the shell, allowing commands to be sent and responses captured across multiple interactions\n\nPS1 is the primary shell prompt (what you see when the shell is ready for a command), and PS2 is the secondary prompt (shown when a command spans multiple lines or is incomplete). pexpect is a Python library for controlling interactive command-line programs by automating the sending of inputs and reading of outputs. It’s particularly useful for automating tasks that normally require human interaction. spawn is pexpect’s main function that starts a child process (like a shell) and returns a pexpect object that can communicate with it. Unlike subprocess, spawn maintains an interactive session - you can send commands, wait for responses, and continue the conversation with the same process instance.\nThis establishes the foundation for persistent shell state - variables, directory changes, and other shell modifications will persist between command executions.\n\nenv = dict(os.environ, TERM='dumb', PS1='', PS2='')\nsh = pexpect.spawn(eshell, encoding='utf-8', env=env)\nsh.sendline('stty -echo')\nsh.readline()\necho = os.urandom(8).hex()\necho_re = re.compile(fr'^{echo}\\s*$', flags=re.MULTILINE)\nsh.sendline(f'export PS1=\"\"')\nsh.sendline('set +o vi +o emacs')\nsh.sendline('echo '+echo)\nsh.expect(echo_re, timeout=2)\n\n0\n\n\nThis cell implements a more sophisticated shell setup that addresses output formatting and command echo issues:\n\nEcho suppression: Uses stty -echo to prevent command echoing, which is crucial for clean output capture\nEmpty prompts: Sets PS1=\"\" and PS2=\"\" to eliminate prompt strings that would interfere with output parsing\nLine editing disabled: Runs set +o vi +o emacs to disable interactive line editing features that can cause issues in programmatic shell interaction\nSynchronization mechanism: Establishes a unique echo token using os.urandom(8).hex() and corresponding regex pattern for reliable command completion detection\n\nThe echo token system is particularly important - it provides a reliable way to detect when a command has finished executing by sending a unique marker and waiting for it to appear in the output.\n\nsh.sendline('ls | head -3')\nsh.sendline('echo '+echo)\nsh.expect(echo_re, timeout=2)\nprint(sh.before)\n\n00_core.ipynb\nAGENTS.md\nCHANGELOG.bak\n\n\n\nThis cell demonstrates the practical application of the configured shell for command execution and output capture:\n\nCommand execution: Sends ls | head -3 to list the first three files in the current directory\nCompletion detection: Uses the echo token mechanism (echo [random_hex]) followed by sh.expect(echo_re) to reliably detect when the command has finished\nClean output extraction: Captures the command output via sh.before, which contains everything received before the expected echo token\n\nThis pattern shows how the kernel can execute arbitrary bash commands while maintaining clean separation between command output and shell control mechanisms. The timeout parameter (2 seconds) provides protection against hanging commands, which is essential for a responsive interactive environment.\n\nsource\n\nShellInterpreter\n\ndef ShellInterpreter(\n    debug:bool=False, timeout:int=4, shell_path:str='bash', sudo:bool=False, dumb:bool=True, ssh:NoneType=None\n):\n\nInitialize self. See help(type(self)) for accurate signature.\n\nsh = ShellInterpreter()\nprint(sh('ls | head -3'))\n\n00_core.ipynb\nAGENTS.md\nCHANGELOG.bak\n\n\nNB: requires passwordless sudo to use this:\n\nsh = ShellInterpreter(sudo=True)\n\nsh('cd')\nprint(sh('pwd'))\nsh('cd ..')\nprint(sh('pwd'))\nprint(sh('whoami'))\n\n/var/root\n/var\nroot\n\n\n\nsource\n\n\nShellInterpreter.sync_cwd\n\ndef sync_cwd(\n    \n):\n\nSync session’s cwd to match pshnb’s cwd\n\nsource\n\n\nshell_replace\n\ndef shell_replace(\n    s, shell:NoneType=None\n):\n\nReplace @{var} refs in s with their variable values, if they exist\n\nb = 1\n\na = '''asdf\n$@{b} @{aa}\nfdsa'''\n\nprint(shell_replace(a))\n\nasdf\n$1 @{aa}\nfdsa\n\n\n\nsource\n\n\nPshMagic\n\ndef PshMagic(\n    shell, sudo:bool=False, timeout:int=2, expand:bool=True, o:NoneType=None, ssh:NoneType=None\n):\n\nInitialize self. See help(type(self)) for accurate signature.\n\nsource\n\n\nPshMagic.bash\n\ndef bash(\n    line, cell:NoneType=None\n):\n\n::\n%bash [-h] [-r [RESET]] [-o] [-x] [-X] [-s [SUDO]] [-S] [-c] [-e ESCAPE [ESCAPE …]] [-t TIMEOUT] [command …]\nRun line or cell in persistent shell\npositional arguments: command The command to run\noptions: -h, –help Show this help -r &lt;[RESET]&gt;, –reset &lt;[RESET]&gt; Reset the shell interpreter (optionally run ssh) -o, –obj Return the ShellInterpreter -x, –expand Enable variable expansion -X, –no-expand Disable variable expansion -s &lt;[SUDO]&gt;, –sudo &lt;[SUDO]&gt; Enable sudo -S, –no-sudo Disable sudo -c, –cwd Sync session’s cwd to match pshnb’s cwd -e &lt;ESCAPE [ESCAPE …]&gt;, –escape &lt;ESCAPE [ESCAPE …]&gt; SSH escape code and optional command -t TIMEOUT, –timeout TIMEOUT Set timeout in seconds\n\nsource\n\n\ncreate_magic\n\ndef create_magic(\n    shell:NoneType=None\n):\n\n\n# Only required if you don't load the extension\ncreate_magic()\n\n\n\n\n00_core.ipynb\nAGENTS.md\nCHANGELOG.bak\n\n\n\n\n\n::\n\n  %bash [-h] [-r [RESET]] [-o] [-x] [-X] [-s [SUDO]] [-S] [-c]\n            [-e ESCAPE [ESCAPE ...]] [-t TIMEOUT]\n            [command ...]\n\nRun line or cell in persistent shell\n\npositional arguments:\n  command               The command to run\n\noptions:\n  -h, --help            Show this help\n  -r &lt;[RESET]&gt;, --reset &lt;[RESET]&gt;\n                        Reset the shell interpreter (optionally run ssh)\n  -o, --obj             Return the `ShellInterpreter`\n  -x, --expand          Enable variable expansion\n  -X, --no-expand       Disable variable expansion\n  -s &lt;[SUDO]&gt;, --sudo &lt;[SUDO]&gt;\n                        Enable sudo\n  -S, --no-sudo         Disable sudo\n  -c, --cwd             Sync session's cwd to match pshnb's cwd\n  -e &lt;ESCAPE [ESCAPE ...]&gt;, --escape &lt;ESCAPE [ESCAPE ...]&gt;\n                        SSH escape code and optional command\n  -t TIMEOUT, --timeout TIMEOUT\n                        Set timeout in seconds\n\n\n\n\n\n/Users/jhoward/aai-ws/pshnb\n\n\n\n\n\n/Users/jhoward/aai-ws\n\n\n\n!pwd\n\n/Users/jhoward/aai-ws/pshnb\n\n\nHeredoc example:\n\ncat &gt; tmp.foo &lt;&lt; EOF\nhi\nthere\nEOF\n\n\n\n\nhi\nthere\n\n\n\n\n\nContextKit\nMonsterUI\nREADME.md\n\n\n\nos.getcwd()\n\n'/Users/jhoward/aai-ws'\n\n\n\nn = 2\n\n\n\n\n2\n\n\n\n\n\nContextKit\nMonsterUI\n\n\n\necho starting\n(sleep 1; echo finished) &\n\nstarting\n[1] 51853\n\n\n\ntime.sleep(1.1)\n\n\n\n\nfinished\n\n[1]+  Done                       ( sleep 1; echo finished )\n\n\n\n\n\n::\n\n  %bash [-h] [-r [RESET]] [-o] [-x] [-X] [-s [SUDO]] [-S] [-c]\n            [-e ESCAPE [ESCAPE ...]] [-t TIMEOUT]\n            [command ...]\n\nRun line or cell in persistent shell\n\npositional arguments:\n  command               The command to run\n\noptions:\n  -h, --help            Show this help\n  -r &lt;[RESET]&gt;, --reset &lt;[RESET]&gt;\n                        Reset the shell interpreter (optionally run ssh)\n  -o, --obj             Return the `ShellInterpreter`\n  -x, --expand          Enable variable expansion\n  -X, --no-expand       Disable variable expansion\n  -s &lt;[SUDO]&gt;, --sudo &lt;[SUDO]&gt;\n                        Enable sudo\n  -S, --no-sudo         Disable sudo\n  -c, --cwd             Sync session's cwd to match pshnb's cwd\n  -e &lt;ESCAPE [ESCAPE ...]&gt;, --escape &lt;ESCAPE [ESCAPE ...]&gt;\n                        SSH escape code and optional command\n  -t TIMEOUT, --timeout TIMEOUT\n                        Set timeout in seconds\n\n\nReset the interpreter:\n\n\n\n/Users/jhoward/aai-ws\n\n\n\n\n\n/opt/homebrew/bin/bash\n\n\nsudo:\n\n\n\nroot\n\n\nno sudo:\n\n\n\njhoward\n\n\ntimeout:\n\ntry: get_ipython().run_line_magic('bash', 'sleep 2')\nexcept TIMEOUT: print(\"timed out\")\n\ntimed out",
+    "crumbs": [
+      "pshnb IPython magic"
+    ]
+  },
+  {
+    "objectID": "core.html#ssh",
+    "href": "core.html#ssh",
+    "title": "pshnb IPython magic",
+    "section": "ssh",
+    "text": "ssh\n\nsh = ShellInterpreter(ssh='ev2')\nprint(sh('ls | head -3'))\n\ngo\nMaildir\nquarto-1.7.32-linux-amd64.deb\n\n\n\npassw = getpass()\n\n\nsh = ShellInterpreter(ssh='ev2', sudo=passw)\nprint(sh('pwd'))\nprint(sh('whoami'))\n\n/root\nroot\n\n\n\n\n\njphmacbook.local\n\n\n\n\n\nev2.answer.ai\n\n\n\n\n\njhoward\n\n\n\n\n\nev2.answer.ai\n\n\n\n\n\nroot\n\n\n\nsource\n\nload_ipython_extension\n\ndef load_ipython_extension(\n    ipython\n):\n\nRequired function for creating magic\n\nsource\n\n\ncreate_ipython_config\n\ndef create_ipython_config(\n    \n):\n\nCalled by pshnb_install to install magic",
+    "crumbs": [
+      "pshnb IPython magic"
+    ]
+  },
+  {
+    "objectID": "AGENTS.html",
+    "href": "AGENTS.html",
+    "title": "pshnb – operator notes",
+    "section": "",
+    "text": "Documentation for agents working on this nbdev project. Source notebooks drive code; most .py files are generated.\n\n\n\n00_core.ipynb: Primary nbdev notebook; edit this (not pshnb/core.py) to change code/doc examples, then run nbdev export.\nindex.ipynb: Landing notebook that builds the README/home page.\npshnb/core.py: Generated module containing the persistent shell magic implementation.\npshnb/__init__.py: Version + re-exports.\npshnb/_modidx.py: nbdev-generated module index; rebuild via nbdev, do not hand-edit.\nsettings.ini, nbdev.yml, _quarto.yml, sidebar.yml: nbdev + Quarto config.\n_docs/: Built documentation site output (Quarto).\nPackaging: pyproject.toml, setup.py, MANIFEST.in, pshnb.egg-info, dist/.\nChangelogs: CHANGELOG.md (+ .bak).\n\n\n\n\nPersistent shell session backed by pexpect. Echo-less prompt and sentinel ensure synchronous command completion:\nclass ShellInterpreter:\n    def __init__(...):\n        shell_path = shutil.which('bash') or os.environ.get('SHELL', '/bin/bash')\n        if sudo: shell_path = 'sudo -i ' + shell_path\n        self.sh = pexpect.spawn(shell_path, encoding='utf-8', env=dict(os.environ, TERM='dumb'))\n        self.sh.sendline('stty -echo'); ...\n        self.echo = os.urandom(8).hex()\n        self.echo_re = re.compile(fr'^{self.echo}\\s*$', flags=re.MULTILINE)\n\n    def _ex(self, s, timeout=None):\n        self.sh.sendline(s)\n        res = self.wait_echo(timeout=timeout)\n        return res\n\n    def __call__(self, cmd, timeout=None):\n        output = self._ex(cmd.rstrip(), timeout=timeout)\n        return output.replace(cmd + '\\r\\n', '', 1).rstrip()\nPshMagic.bash wires the IPython %bash/%%bash magics to the interpreter. Flags toggle behavior: -r/--reset (optionally choose shell), -s/-S sudo, -x/-X variable expansion, -t timeout, -c sync cwd, -o return the magic object. Variable replacement uses @{name} tokens resolved from the user namespace via shell_replace.\nInstalling the magic globally uses the console script pshnb_install → create_ipython_config, which appends pshnb.core to profile_default/ipython_config.py if absent.\n\n\n\n\nEdit notebooks (00_core.ipynb, index.ipynb) and run nbdev_export/nbdev_prepare to regenerate modules, README, and docs; avoid direct edits to generated .py/_modidx.py.\nAlternatively, edit the .py files and run nbdev_sync to push changes back into the notebooks\nDependencies are minimal: fastcore, plus pexpect/IPython pulled via the notebook environment. For local dev: pip install -e . in the repo root.\nDocs build to _docs/; Quarto config lives in _quarto.yml. The published site is configured for https://answerdotai.github.io/pshnb.\nEntry points defined in setup.py: pshnb_install (console) and IPython extension hook pshnb.core:load_ipython_extension.\nNo automated tests are present; manual notebook runs are the primary verification path, or nbdev_test as per standard nbdev practice. TIMEOUT exceptions surface from pexpect if commands overrun the configured timeout."
+  },
+  {
+    "objectID": "AGENTS.html#repo-layout",
+    "href": "AGENTS.html#repo-layout",
+    "title": "pshnb – operator notes",
+    "section": "",
+    "text": "00_core.ipynb: Primary nbdev notebook; edit this (not pshnb/core.py) to change code/doc examples, then run nbdev export.\nindex.ipynb: Landing notebook that builds the README/home page.\npshnb/core.py: Generated module containing the persistent shell magic implementation.\npshnb/__init__.py: Version + re-exports.\npshnb/_modidx.py: nbdev-generated module index; rebuild via nbdev, do not hand-edit.\nsettings.ini, nbdev.yml, _quarto.yml, sidebar.yml: nbdev + Quarto config.\n_docs/: Built documentation site output (Quarto).\nPackaging: pyproject.toml, setup.py, MANIFEST.in, pshnb.egg-info, dist/.\nChangelogs: CHANGELOG.md (+ .bak)."
+  },
+  {
+    "objectID": "AGENTS.html#core-behavior-key-snippets",
+    "href": "AGENTS.html#core-behavior-key-snippets",
+    "title": "pshnb – operator notes",
+    "section": "",
+    "text": "Persistent shell session backed by pexpect. Echo-less prompt and sentinel ensure synchronous command completion:\nclass ShellInterpreter:\n    def __init__(...):\n        shell_path = shutil.which('bash') or os.environ.get('SHELL', '/bin/bash')\n        if sudo: shell_path = 'sudo -i ' + shell_path\n        self.sh = pexpect.spawn(shell_path, encoding='utf-8', env=dict(os.environ, TERM='dumb'))\n        self.sh.sendline('stty -echo'); ...\n        self.echo = os.urandom(8).hex()\n        self.echo_re = re.compile(fr'^{self.echo}\\s*$', flags=re.MULTILINE)\n\n    def _ex(self, s, timeout=None):\n        self.sh.sendline(s)\n        res = self.wait_echo(timeout=timeout)\n        return res\n\n    def __call__(self, cmd, timeout=None):\n        output = self._ex(cmd.rstrip(), timeout=timeout)\n        return output.replace(cmd + '\\r\\n', '', 1).rstrip()\nPshMagic.bash wires the IPython %bash/%%bash magics to the interpreter. Flags toggle behavior: -r/--reset (optionally choose shell), -s/-S sudo, -x/-X variable expansion, -t timeout, -c sync cwd, -o return the magic object. Variable replacement uses @{name} tokens resolved from the user namespace via shell_replace.\nInstalling the magic globally uses the console script pshnb_install → create_ipython_config, which appends pshnb.core to profile_default/ipython_config.py if absent."
+  },
+  {
+    "objectID": "AGENTS.html#working-on-the-project",
+    "href": "AGENTS.html#working-on-the-project",
+    "title": "pshnb – operator notes",
+    "section": "",
+    "text": "Edit notebooks (00_core.ipynb, index.ipynb) and run nbdev_export/nbdev_prepare to regenerate modules, README, and docs; avoid direct edits to generated .py/_modidx.py.\nAlternatively, edit the .py files and run nbdev_sync to push changes back into the notebooks\nDependencies are minimal: fastcore, plus pexpect/IPython pulled via the notebook environment. For local dev: pip install -e . in the repo root.\nDocs build to _docs/; Quarto config lives in _quarto.yml. The published site is configured for https://answerdotai.github.io/pshnb.\nEntry points defined in setup.py: pshnb_install (console) and IPython extension hook pshnb.core:load_ipython_extension.\nNo automated tests are present; manual notebook runs are the primary verification path, or nbdev_test as per standard nbdev practice. TIMEOUT exceptions surface from pexpect if commands overrun the configured timeout."
+  },
+  {
+    "objectID": "CHANGELOG.html",
+    "href": "CHANGELOG.html",
+    "title": "Release notes",
+    "section": "",
+    "text": "Handle trailing flags on line magic (#4)\nUse bash by default (#4)\nChange magic to bash (#4)\n\n\n\n\n\n\n\n\nBackground task support (#2)\n\n\n\n\n\n\nInit working version"
+  },
+  {
+    "objectID": "CHANGELOG.html#section",
+    "href": "CHANGELOG.html#section",
+    "title": "Release notes",
+    "section": "",
+    "text": "Handle trailing flags on line magic (#4)\nUse bash by default (#4)\nChange magic to bash (#4)"
+  },
+  {
+    "objectID": "CHANGELOG.html#section-1",
+    "href": "CHANGELOG.html#section-1",
+    "title": "Release notes",
+    "section": "",
+    "text": "Background task support (#2)"
+  },
+  {
+    "objectID": "CHANGELOG.html#section-2",
+    "href": "CHANGELOG.html#section-2",
+    "title": "Release notes",
+    "section": "",
+    "text": "Init working version"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Using psh magics",
+    "section": "",
+    "text": "pshnb adds %bash and %%bash functions to Jupyter and IPython, which execute expressions in a persistent shell.",
+    "crumbs": [
+      "Using `psh` magics"
+    ]
+  },
+  {
+    "objectID": "index.html#installation",
+    "href": "index.html#installation",
+    "title": "Using psh magics",
+    "section": "Installation",
+    "text": "Installation\nInstall pshnb with:\npip install pshnb\nOnce that’s complete, you can install the magics to all IPython and Jupyter sessions automatically by running in your terminal:\npshnb_install\nIf you don’t want to install the automatic magic, you can instead run in notebooks where you want to use it:\n%load_ext pshnb",
+    "crumbs": [
+      "Using `psh` magics"
+    ]
+  },
+  {
+    "objectID": "index.html#whats-the-point",
+    "href": "index.html#whats-the-point",
+    "title": "Using psh magics",
+    "section": "What’s the point?",
+    "text": "What’s the point?\nIn jupyter and ipython, you can run a shell command using the ! prefix:\n\n!pwd\n\n/Users/jhoward/aai-ws/pshnb\n\n\nHowever, each time you run this command, a new shell is created and then removed, so for instance, cd doesn’t actually do anything if you run another command afterwards:\n\n!cd ..\n!pwd\n\n/Users/jhoward/aai-ws/pshnb\n\n\nAs you see from the !pwd output, the directory hasn’t actually changed!\n%bash, on the other hand, creates a persistent shell, which solves this problem:\n\n\n\n/Users/jhoward/aai-ws/pshnb\n\n\n\n\n\n/Users/jhoward/aai-ws\n\n\nWith %bash, you can implement, and document in notebooks, multi-step stateful shell interactions, including setting environment variables, sourcing scripts, and changing directories.",
+    "crumbs": [
+      "Using `psh` magics"
+    ]
+  },
+  {
+    "objectID": "index.html#features",
+    "href": "index.html#features",
+    "title": "Using psh magics",
+    "section": "Features",
+    "text": "Features\n\nCell magic\nYou can use the %%bash cell magic to run multi-line shell commands, such as here-docs. For instance:\n\ncat &gt; tmp &lt;&lt; EOF\nhi\nthere\nEOF\n\nThis creates a file called tmp containing two lines. Let’s check it worked, and then remove it – as you see, you can also use the cell magic to run multiple commands:\n\ncat tmp\nrm tmp\n\nhi\nthere\n\n\n\n\nVariable expansion\nYou can pipe commands together just like in a regular shell, and use standard unix utilities like head to process the output. For instance, here we show just the first 3 lines of the directory listing:\n\n\n\n_nbs\n_proc\naddnew.py\n\n\nYou can use Python variables in your shell commands by prefixing them with @{}. For instance, here we create a variable n and then display it using echo:\n\nn = 2\n\n\n\n\n2\n\n\nHere we use n to show just the first two entries from the directory listing:\n\n\n\n_nbs\n_proc\n\n\n\n\nBackground tasks\nYou can run commands in the background in the shell by adding & at the end of a command. The parentheses (...) group commands together to run as one unit. In this example, we first print “starting”, and then create a background process that will wait for 1 second (using sleep 1) and then print “finished”. The shell immediately shows us “starting” and tells us it created background process number 1 (with a process ID):\n\necho starting\n(sleep 1; echo finished) &\n\nstarting\n[1] 18618\n\n\nFor this demonstration, we wait for 1.1 seconds (slightly longer than the background process needs). During this time, the background process will complete in the background. But we won’t see any output from it yet.\n\nfrom time import sleep\nsleep(1.1)\n\nThe next time we run any psh magic we will also see any output that has occurred in our persistent shell since the last command. Run %bash by itself to only see those updates, e.g here we see that “finished” was printed, and the shell tells us that background job 1 completed successfully.\n\n\n\nfinished\n\n[1]+  Done                    ( sleep 1; echo finished )\n\n\n\n\nFlags\nYou can get help on the %bash magic’s options using -h.\n\n\n\n::\n\n  %bash [-h] [-r [RESET]] [-o] [-x] [-X] [-s] [-S] [-t TIMEOUT]\n            [command ...]\n\nRun line or cell in persistent shell\n\npositional arguments:\n  command               The command to run\n\noptions:\n  -h, --help            Show this help\n  -r &lt;[RESET]&gt;, --reset &lt;[RESET]&gt;\n                        Reset the shell interpreter (optionally choose shell)\n  -o, --obj             Return this magic object\n  -x, --expand          Enable variable expansion\n  -X, --no-expand       Disable variable expansion\n  -s, --sudo            Enable sudo\n  -S, --no-sudo         Disable sudo\n  -t TIMEOUT, --timeout TIMEOUT\n                        Set timeout in seconds\n\n\nYou can reset the shell to its initial state using the -r flag. Let’s first check our current directory:\n\n\n\n/Users/jhoward/aai-ws\n\n\nNow let’s reset the shell:\nAs you can see, after resetting we’re back in our starting directory:\n\n\n\n/Users/jhoward/aai-ws/pshnb\n\n\nThe -s flag enables sudo mode, which runs commands as the root user, and -S disables it. For instance, here we first enable sudo mode:\nThen we can check which user we’re running as:\n\n\n\nroot\n\n\nAs you can see, we’re now running as root. We can disable sudo mode:\nAnd when we check again, we’re back to our regular user:\n\n\n\njhoward\n\n\nYou can set a timeout (in seconds) using the -t flag, which will raise a TIMEOUT exception if a command takes too long. For instance, here we set a 1-second timeout:\nThen we try to run a command that sleeps for 2 seconds – since this is longer than our timeout, we’ll get a timeout error:\n\nfrom pexpect import TIMEOUT\n\n\ntry: get_ipython().run_line_magic('bash', 'sleep 2')\nexcept TIMEOUT: print(\"timed out\")\n\ntimed out",
+    "crumbs": [
+      "Using `psh` magics"
+    ]
+  }
+]
