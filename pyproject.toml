@@ -32,6 +32,7 @@ version = {attr = "pshnb.__version__"}
 include = ["pshnb"]
 
 [tool.nbdev]
+allowed_metadata_keys = ['solveit_dialog_mode', 'solveit_ver']
 nbs_path = '.'
 recursive = false
 custom_sidebar = false
