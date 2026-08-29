@@ -41,8 +41,8 @@ class ShellInterpreter:
 Installing the magic globally uses the console script `pshnb_install` → `create_ipython_config`, which appends `pshnb.core` to `profile_default/ipython_config.py` if absent.
 
 ## Working on the project
-- Edit notebooks (`00_core.ipynb`, `index.ipynb`) and run `nbdev_export`/`nbdev_prepare` to regenerate modules, README, and docs; avoid direct edits to generated `.py`/`_modidx.py`.
-- Alternatively, edit the .py files and run `nbdev_sync` to push changes back into the notebooks
+- Edit notebooks (`00_core.ipynb`, `index.ipynb`) and run `nbdev-export`/`nbdev-prepare` to regenerate modules, README, and docs; avoid direct edits to generated `.py`/`_modidx.py`.
+- Alternatively, edit the .py files and run `nbdev-update` to push changes back into the notebooks
 - Dependencies are minimal: `fastcore`, plus `pexpect`/`IPython` pulled via the notebook environment. For local dev: `pip install -e .` in the repo root.
 - Docs build to `_docs/`; Quarto config lives in `_quarto.yml`. The published site is configured for `https://answerdotai.github.io/pshnb`.
 - Entry points defined in `setup.py`: `pshnb_install` (console) and IPython extension hook `pshnb.core:load_ipython_extension`.
